@@ -441,6 +441,16 @@ footer .cp{display:flex;justify-content:space-between;font-size:13px;opacity:.55
   .donut{flex-direction:column}
 }
 
+
+/* corrections mobile */
+footer .news input{min-width:0}
+.am{min-width:0}
+@media (max-width:960px){
+  footer .top>div:first-child{grid-column:1/-1}
+  .adm{grid-template-columns:minmax(0,1fr)}
+  .atop{flex-wrap:wrap;gap:10px}
+  .salehero{overflow:hidden}
+}
 /* sens gauche-droite en français */
 [dir=ltr] .btn .arr svg,[dir=ltr] .lbl svg{transform:scaleX(-1)}
 [dir=ltr] .btn:hover .arr{transform:translateX(4px)}
