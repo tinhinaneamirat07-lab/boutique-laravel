@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // SetLocale s'exécute sur toutes les pages web
-        $middleware->web(append: \App\Http\Middleware\SetLocale::class);
+        $middleware->web(append: [
+            \App\Http\Middleware\SetLocale::class,
+            \App\Http\Middleware\HandleInertiaRequests::class,  // après SetLocale : la langue est déjà choisie
+        ]);
         // Visiteur non connecté qui ouvre une page admin -> page de connexion
         $middleware->redirectGuestsTo(fn () => route('admin.login'));
         // Admin déjà connecté qui ouvre la page de connexion -> liste des commandes

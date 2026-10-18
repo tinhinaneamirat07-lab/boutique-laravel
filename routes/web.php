@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Route;
 
 // Route = lien entre une URL et une méthode du controller
 Route::get('/', [ProductController::class, 'index'])->name('products.index');
+Route::get('/catalogue', [ProductController::class, 'catalogue'])->name('products.catalogue');
+Route::get('/sale', [ProductController::class, 'sale'])->name('products.sale');
 Route::get('/produits/{product}', [ProductController::class, 'show'])->name('products.show');
 
 // Changer de langue : garde le choix en session puis revient à la page précédente

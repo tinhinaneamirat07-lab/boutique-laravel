@@ -41,15 +41,28 @@ class OrderController extends Controller
         DB::transaction(function () use ($order, $old, $new) {
             // Annulation : on remet les articles en stock
             if ($new === 'cancelled' && $old !== 'cancelled') {
-                $order->product->increment('stock', $order->quantity);
+                $this->moveStock($order, +$order->quantity);
             }
             // Ré-activation d'une commande annulée : on reprend le stock
             if ($old === 'cancelled' && $new !== 'cancelled') {
-                $order->product->decrement('stock', $order->quantity);
+                $this->moveStock($order, -$order->quantity);
             }
             $order->update(['status' => $new]);
         });
 
         return back()->with('success', "الطلب #{$order->id} : ".Order::STATUSES[$new][0]);
+    }
+
+    // Ajoute (ou retire) des paires au stock de la pointure de la commande
+    private function moveStock(Order $order, int $qty): void
+    {
+        $product = $order->product;
+        if ($order->size && is_array($product->sizes)) {
+            $sizes = $product->sizes;
+            $sizes[$order->size] = max(0, ($sizes[$order->size] ?? 0) + $qty);
+            $product->update(['sizes' => $sizes]);
+        } else {
+            $qty > 0 ? $product->increment('stock', $qty) : $product->decrement('stock', -$qty);
+        }
     }
 }

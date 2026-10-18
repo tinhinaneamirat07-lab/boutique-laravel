@@ -8,18 +8,30 @@ use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
-    // $fillable = colonnes qu'on autorise à remplir en masse (protection de sécurité)
-    protected $fillable = ['name', 'name_fr', 'description', 'description_fr', 'price', 'stock', 'image', 'is_active'];
+    public const CATEGORIES = ['heels', 'sneakers', 'sport', 'boots', 'classic', 'sandals'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $fillable = [
+        'name', 'name_fr', 'category', 'subtitle', 'description', 'description_fr',
+        'price', 'old_price', 'stock', 'sizes', 'image', 'is_active', 'is_new',
+    ];
 
-    // Scope : Product::visible()->get() = produits actifs ET en stock
-    public function scopeVisible(Builder $query): void
+    protected $casts = ['is_active' => 'boolean', 'is_new' => 'boolean', 'sizes' => 'array'];
+
+    // Le stock total = somme du stock de chaque pointure (calculé automatiquement à l'enregistrement)
+    protected static function booted(): void
     {
-        $query->where('is_active', true)->where('stock', '>', 0);
+        static::saving(function (Product $p) {
+            if (is_array($p->sizes)) {
+                $p->stock = array_sum($p->sizes);
+            }
+        });
     }
 
-    // $product->display_name : nom dans la langue du visiteur (arabe si pas de traduction)
+    public function scopeVisible(Builder $query): void
+    {
+        $query->where('is_active', true);
+    }
+
     public function getDisplayNameAttribute(): string
     {
         return app()->getLocale() === 'fr' && $this->name_fr ? $this->name_fr : $this->name;
@@ -30,13 +42,27 @@ class Product extends Model
         return app()->getLocale() === 'fr' && $this->description_fr ? $this->description_fr : $this->description;
     }
 
-    // $product->image_url : URL publique de l'image (ou null s'il n'y en a pas)
     public function getImageUrlAttribute(): ?string
     {
         return $this->image ? Storage::disk('public')->url($this->image) : null;
     }
 
-    // Relation : un produit a plusieurs commandes
+    // Données envoyées à React (seulement ce qui est utile, jamais tout le modèle)
+    public function toCard(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->display_name,
+            'subtitle' => $this->subtitle,
+            'category' => $this->category,
+            'price' => $this->price,
+            'old_price' => $this->old_price,
+            'stock' => $this->stock,
+            'is_new' => $this->is_new,
+            'image' => $this->image_url,
+        ];
+    }
+
     public function orders()
     {
         return $this->hasMany(Order::class);

@@ -17,7 +17,7 @@ class Order extends Model
 
     protected $fillable = [
         'customer_name', 'phone', 'wilaya_id', 'commune', 'delivery_type',
-        'product_id', 'quantity', 'unit_price', 'shipping_price', 'total', 'status',
+        'product_id', 'quantity', 'size', 'unit_price', 'shipping_price', 'total', 'status',
     ];
 
     // Relations : une commande appartient à un produit et à une wilaya
