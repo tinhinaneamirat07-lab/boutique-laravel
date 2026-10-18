@@ -5,16 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class AuthController extends Controller
 {
-    // GET /admin/login : affiche le formulaire
     public function showLogin()
     {
-        return view('admin.login');
+        return Inertia::render('Admin/Login');
     }
 
-    // POST /admin/login : vérifie email + mot de passe
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -24,16 +23,14 @@ class AuthController extends Controller
 
         // Auth::attempt compare le mot de passe avec le hash stocké en base
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()->withErrors(['email' => 'البريد أو كلمة السر غير صحيحة.'])->onlyInput('email');
+            return back()->withErrors(['email' => __('البريد أو كلمة السر غير صحيحة.')]);
         }
 
-        // Nouvel identifiant de session après connexion (protège contre le vol de session)
-        $request->session()->regenerate();
+        $request->session()->regenerate();   // nouvel identifiant de session (contre le vol de session)
 
         return redirect()->intended(route('admin.orders.index'));
     }
 
-    // POST /admin/logout
     public function logout(Request $request)
     {
         Auth::logout();

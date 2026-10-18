@@ -6,69 +6,75 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
-// CRUD = Create, Read, Update, Delete
 class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::withCount('orders')->latest()->get();   // withCount : nb de commandes
-
-        return view('admin.products.index', compact('products'));
+        return Inertia::render('Admin/Products', [
+            'products' => Product::withCount('orders')->latest('id')->get()->map(fn (Product $p) => [
+                'id' => $p->id, 'name' => $p->display_name, 'subtitle' => $p->subtitle, 'category' => $p->category,
+                'price' => $p->price, 'old_price' => $p->old_price, 'stock' => $p->stock,
+                'sizes' => $p->sizes ?? (object) [], 'image' => $p->image_url,
+                'is_active' => $p->is_active, 'orders' => $p->orders_count,
+            ]),
+        ]);
     }
 
     public function create()
     {
-        return view('admin.products.create', ['product' => new Product(['is_active' => true])]);
+        return Inertia::render('Admin/ProductForm', ['product' => null]);
+    }
+
+    public function edit(Product $product)
+    {
+        return Inertia::render('Admin/ProductForm', ['product' => $product->only([
+            'id', 'name', 'name_fr', 'category', 'subtitle', 'description', 'description_fr',
+            'price', 'old_price', 'sizes', 'is_active', 'is_new',
+        ]) + ['image' => $product->image_url]]);
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
-
         if ($request->hasFile('image')) {
-            // Enregistre dans storage/app/public/products et garde le chemin en base
             $data['image'] = $request->file('image')->store('products', 'public');
         }
-
         Product::create($data);
 
-        return redirect()->route('admin.products.index')->with('success', 'تمت إضافة المنتوج.');
+        return redirect()->route('admin.products.index')->with('success', __('تمت إضافة المنتوج.'));
     }
 
-    public function edit(Product $product)
-    {
-        return view('admin.products.edit', compact('product'));
-    }
-
+    // Avec un fichier, Inertia envoie un POST avec _method=PUT (le navigateur ne sait pas envoyer de fichier en PUT)
     public function update(Request $request, Product $product)
     {
         $data = $this->validated($request);
-
         if ($request->hasFile('image')) {
-            $this->deleteImage($product);   // supprime l'ancienne image du disque
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
             $data['image'] = $request->file('image')->store('products', 'public');
         }
-
         $product->update($data);
 
-        return redirect()->route('admin.products.index')->with('success', 'تم تعديل المنتوج.');
+        return redirect()->route('admin.products.index')->with('success', __('تم تعديل المنتوج.'));
     }
 
     public function destroy(Product $product)
     {
-        // Un produit déjà commandé ne peut pas être supprimé (les commandes en ont besoin).
         if ($product->orders()->exists()) {
-            return back()->with('success', 'لا يمكن حذف منتوج عنده طلبات. أخفيه بدلاً من ذلك.');
+            return back()->with('success', __('لا يمكن حذف منتوج عنده طلبات. أخفيه بدلاً من ذلك.'));
         }
-
-        $this->deleteImage($product);
+        if ($product->image) {
+            Storage::disk('public')->delete($product->image);
+        }
         $product->delete();
 
-        return back()->with('success', 'تم حذف المنتوج.');
+        return back()->with('success', __('تم حذف المنتوج.'));
     }
 
-    // PATCH : afficher / masquer en un clic
     public function toggle(Product $product)
     {
         $product->update(['is_active' => ! $product->is_active]);
@@ -76,28 +82,26 @@ class ProductController extends Controller
         return back();
     }
 
-    // Règles communes à l'ajout et à la modification
     private function validated(Request $request): array
     {
         $data = $request->validate([
-            'name'        => ['required', 'string', 'max:150'],
+            'name'           => ['required', 'string', 'max:150'],
             'name_fr'        => ['nullable', 'string', 'max:150'],
+            'category'       => ['required', Rule::in(Product::CATEGORIES)],
+            'subtitle'       => ['nullable', 'string', 'max:100'],
             'description'    => ['nullable', 'string', 'max:2000'],
             'description_fr' => ['nullable', 'string', 'max:2000'],
-            'price'       => ['required', 'integer', 'min:0'],
-            'stock'       => ['required', 'integer', 'min:0'],
-            'image'       => ['nullable', 'image', 'max:2048'],   // image, 2 Mo max
+            'price'          => ['required', 'integer', 'min:0'],
+            'old_price'      => ['nullable', 'integer', 'gt:price'],   // l'ancien prix doit être plus grand
+            'sizes'          => ['required', 'array'],                 // {"36": 4, "37": 0, ...}
+            'sizes.*'        => ['integer', 'min:0', 'max:999'],
+            'image'          => ['nullable', 'image', 'max:2048'],
         ]);
-        $data['is_active'] = $request->boolean('is_active');      // case non cochée = false
-        unset($data['image']);                                    // l'image est traitée à part
+        $data['is_active'] = $request->boolean('is_active');
+        $data['is_new'] = $request->boolean('is_new');
+        $data['sizes'] = array_map('intval', $data['sizes']);
+        unset($data['image']);
 
         return $data;
-    }
-
-    private function deleteImage(Product $product): void
-    {
-        if ($product->image) {
-            Storage::disk('public')->delete($product->image);
-        }
     }
 }

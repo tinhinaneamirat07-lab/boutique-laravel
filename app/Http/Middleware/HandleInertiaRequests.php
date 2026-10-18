@@ -22,6 +22,7 @@ class HandleInertiaRequests extends Middleware
                 ? json_decode(file_get_contents($frPath), true)
                 : (object) [],
             'flash' => ['success' => fn () => $request->session()->get('success')],
+            'auth' => ['name' => fn () => $request->user()?->name],
         ]);
     }
 }
