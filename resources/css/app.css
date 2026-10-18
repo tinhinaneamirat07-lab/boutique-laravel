@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Tajawal', ui-sans-serif, system-ui, sans-serif;
+    --color-brand: #b4532a;       /* couleur principale (terracotta) */
+    --color-brand-dark: #8f3f1f;
+    --color-cream: #faf6f1;       /* fond */
+}
+
+[x-cloak] { display: none !important; }
